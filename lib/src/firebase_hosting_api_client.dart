@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:firebase_hosting_api_client/src/models/version_file.dart';
@@ -16,36 +15,35 @@ import 'package:googleapis_auth/googleapis_auth.dart';
 /// You should call [closeClient] when you are done using the api.
 ///
 class FirebaseHostingApiClient {
-  late final String _siteId;
+  late final String _projectId;
   late final Uri _createNewVersionUri;
   late final Uri _getCurrentVersionUri;
   late final String _uploadUrl;
 
-  final AuthClient _client;
+  final AuthClient _httpClient;
 
-  FirebaseHostingApiClient._(AuthClient client) : _client = client {
-    // var firebasercString = File(arguments.elementAt(1)).readAsStringSync();
-
-    var firebasercString = File('.firebaserc').readAsStringSync();
-    _siteId = jsonDecode(firebasercString)['projects']['default'];
-
-    _createNewVersionUri = Uri.https(host, '/v1beta1/sites/$_siteId/versions');
-    _getCurrentVersionUri = Uri.https(host, '/v1beta1/sites/$_siteId/releases');
+  FirebaseHostingApiClient._(AuthClient httpClient, String projectId)
+      : _httpClient = httpClient,
+        _projectId = projectId {
+    _createNewVersionUri =
+        Uri.https(host, '/v1beta1/sites/$_projectId/versions');
+    _getCurrentVersionUri =
+        Uri.https(host, '/v1beta1/sites/$_projectId/releases');
   }
 
   static Future<FirebaseHostingApiClient> create(
-      {required String serviceAccountKey}) async {
+      {required String serviceAccountKey, required String projectId}) async {
     var credentials =
         ServiceAccountCredentials.fromJson(jsonDecode(serviceAccountKey));
 
     var client = await clientViaServiceAccount(
         credentials, ["https://www.googleapis.com/auth/firebase.hosting"]);
 
-    return FirebaseHostingApiClient._(client);
+    return FirebaseHostingApiClient._(client, projectId);
   }
 
   Future<String> getCurrentVersion() async {
-    var response = await _client.get(_getCurrentVersionUri,
+    var response = await _httpClient.get(_getCurrentVersionUri,
         headers: {'Content-type': 'application/json'});
 
     var releases = jsonDecode(response.body)['releases'] as List;
@@ -56,7 +54,7 @@ class FirebaseHostingApiClient {
 
   /// returns the [versionName]
   Future<String> createNewVersion() async {
-    var response = await _client.post(_createNewVersionUri,
+    var response = await _httpClient.post(_createNewVersionUri,
         headers: {'Content-type': 'application/json'},
         body: jsonEncode({
           "config": {
@@ -82,7 +80,7 @@ class FirebaseHostingApiClient {
     var listFilesUri = Uri.https(host, '/v1beta1/$versionName/files');
     print('\nListing files...');
 
-    var listFilesResponse = await _client
+    var listFilesResponse = await _httpClient
         .get(listFilesUri, headers: {'Content-type': 'application/json'});
     printIfVerbose(listFilesResponse.body);
 
@@ -106,7 +104,7 @@ class FirebaseHostingApiClient {
 
     print(json);
 
-    var populateResponse = await _client.post(
+    var populateResponse = await _httpClient.post(
       populateUri,
       headers: {'Content-type': 'application/json'},
       body: jsonEncode(json),
@@ -135,7 +133,7 @@ class FirebaseHostingApiClient {
   }) async {
     int i = 1, total = requiredHashes.length;
     for (var hash in requiredHashes) {
-      await _client.post(Uri.parse('$_uploadUrl/$hash'),
+      await _httpClient.post(Uri.parse('$_uploadUrl/$hash'),
           headers: {'Content-Type': 'application/octet-stream'},
           body: bytesForHash[hash]);
 
@@ -148,7 +146,7 @@ class FirebaseHostingApiClient {
         Uri.https(host, '/v1beta1/$versionName', {'update_mask': 'status'});
     print(statusUri);
 
-    var statusResponse = await _client.patch(statusUri,
+    var statusResponse = await _httpClient.patch(statusUri,
         headers: {'Content-type': 'application/json'},
         body: jsonEncode({'status': 'FINALIZED'}));
     print('\nFINALIZED');
@@ -156,13 +154,13 @@ class FirebaseHostingApiClient {
   }
 
   Future<void> release({required String versionName}) async {
-    final releaseUri = Uri.https(
-        host, '/v1beta1/sites/$_siteId/releases', {'versionName': versionName});
-    var releaseResponse = await _client.post(releaseUri);
+    final releaseUri = Uri.https(host, '/v1beta1/sites/$_projectId/releases',
+        {'versionName': versionName});
+    var releaseResponse = await _httpClient.post(releaseUri);
 
     print('\nRELEASED');
     printIfVerbose(releaseResponse.body);
   }
 
-  void closeClient() => _client.close();
+  void close() => _httpClient.close();
 }
