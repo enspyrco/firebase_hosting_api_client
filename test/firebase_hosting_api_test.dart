@@ -42,6 +42,7 @@ void main() {
       var newVersion = await client.createNewVersion();
 
       // determine the hashes and bytes for the files to upload and put into a json map
+
       JsonMap uploadJson = {'files': {}};
 
       var requiredHashes = await client.populateFiles(
