@@ -54,6 +54,9 @@ void main() {
         pathForHash: upload.pathForHash,
         bytesForHash: upload.bytesForHash,
       );
+
+      await client.finalizeStatus(versionName: newVersion);
+      await client.release(versionName: newVersion);
     });
   });
 }

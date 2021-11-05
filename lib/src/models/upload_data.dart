@@ -56,11 +56,12 @@ class UploadData {
         print(
             'hash: ${truncate(15, digest.toString())} from ...${entity.path} '); // .uri.pathSegments.last
 
-        hashForPath["/${entity.path.replaceFirst('.gz', '')}"] = '$digest';
-        bytesForHash['$digest'] = bytes;
+        var adjustedPath =
+            entity.path.startsWith('/') ? entity.path : '/${entity.path}';
+        adjustedPath = adjustedPath.replaceFirst('.gz', '');
+        hashForPath[adjustedPath] = '$digest';
+        bytesForHash['$digest'] = bytes; // gzip.encode(bytes) as Uint8List;
         pathForHash['$digest'] = entity.path;
-        // .replaceFirst('$workspaceDir/', '')
-        // ..replaceFirst('$workspaceDir/', '')
       }
     }
 
