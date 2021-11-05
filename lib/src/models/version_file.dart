@@ -36,4 +36,9 @@ class VersionFile {
         return StatusEnum.unkown;
     }
   }
+
+  @override
+  String toString() {
+    return 'path: $_path, hash: $_hash, status: $_status';
+  }
 }

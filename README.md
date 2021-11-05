@@ -2,8 +2,12 @@
 
 A Dart client for the Firebase Hosting API.
 
-There is googleapis which generates Dart code from a discovery doc but the firebase_hosting api seems to be missing a lot.
+There is [googleapis](https://pub.dev/packages/googleapis) which generates Dart code for API clients from discovery docs, but the [firebasehosting.v1 library](https://pub.dev/documentation/googleapis/latest/firebasehosting.v1/firebasehosting.v1-library.html) seems to be missing a lot.
+
 This package uses the REST API directly.
+
+References:
+- [Deploy to your site using the Hosting REST API](https://firebase.google.com/docs/hosting/api-deploy)
 
 <!-- 
 This README describes the package. If you publish this package to pub.dev,
