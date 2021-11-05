@@ -25,22 +25,23 @@ class UploadData {
     Map<String, String> hashForPath,
     Map<String, Uint8List> bytesForHash,
     Map<String, String> pathForHash,
+    Directory filesDir,
   )   : _uploadJson = {'files': hashForPath},
-        _bytesFor = bytesForHash,
-        _pathFor = pathForHash;
+        _bytesForHash = bytesForHash,
+        _pathForHash = pathForHash,
+        _filesDir = filesDir;
 
   /// A static function for asynchronously creating [UploadData] objects. All
   /// files in the given directory are used to calculate the metadata and
   /// package the file data ready for upload to Firebase Hosting.
-  static Future<UploadData> createFrom(
-      {required String workspaceDir, required String dirPath}) async {
-    final dir = Directory(workspaceDir + '/' + dirPath + 'coverage');
+  static Future<UploadData> createFrom({required String path}) async {
+    final filesDir = Directory(path);
     final hashForPath = <String, String>{};
     final bytesForHash = <String, Uint8List>{};
     final pathForHash = <String, String>{};
 
     final List<FileSystemEntity> entities =
-        await dir.list(recursive: true).toList();
+        await filesDir.list(recursive: true).toList();
 
     print('Found ${entities.length} file system entities.');
 
@@ -55,7 +56,6 @@ class UploadData {
         print(
             'hash: ${truncate(15, digest.toString())} from ...${entity.path} '); // .uri.pathSegments.last
 
-        var fixedPath = entity.path.replaceFirst('.gz', '');
         hashForPath["/${entity.path.replaceFirst('.gz', '')}"] = '$digest';
         bytesForHash['$digest'] = bytes;
         pathForHash['$digest'] = entity.path;
@@ -67,18 +67,20 @@ class UploadData {
     print('Hashed $numFiles files.');
 
     // create an object from the data & metadata
-    return UploadData._(hashForPath, bytesForHash, pathForHash);
+    return UploadData._(hashForPath, bytesForHash, pathForHash, filesDir);
   }
 
   /// Members.
+  final Directory _filesDir;
   final JsonMap _uploadJson;
-  final Map<String, Uint8List> _bytesFor;
-  final Map<String, String> _pathFor;
+  final Map<String, Uint8List> _bytesForHash;
+  final Map<String, String> _pathForHash;
 
   /// Getters.
+  String get fullPath => _filesDir.path;
   JsonMap get json => _uploadJson;
-  Map<String, Uint8List> get bytesFor => _bytesFor;
-  Map<String, String> get pathFor => _pathFor;
+  Map<String, Uint8List> get bytesForHash => _bytesForHash;
+  Map<String, String> get pathForHash => _pathForHash;
 
   /// Static utility functions
   static String truncate(int cutoff, String myString) {

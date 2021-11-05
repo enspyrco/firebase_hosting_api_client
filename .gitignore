@@ -12,3 +12,6 @@ pubspec.lock
 # a key value used to run the example & e2e tests during prototyping
 example/key.string
 test/key.string
+
+# we can generate coverage any time with flutter test --coverage
+coverage/

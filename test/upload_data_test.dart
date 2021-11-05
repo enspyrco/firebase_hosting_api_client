@@ -3,9 +3,9 @@ import 'package:test/test.dart';
 
 void main() {
   group('UploadData', () {
-    test('.createFrom() generates correct paths', () {
-      UploadData.createFrom(workspaceDir: '', dirPath: '');
-      expect(true, true);
+    test('.createFrom() generates correct paths', () async {
+      final upload = await UploadData.createFrom(path: 'lib');
+      print(upload);
     });
   });
 }

@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:firebase_hosting_api_client/client.dart';
 import 'package:firebase_hosting_api_client/src/firebase_hosting_api_client.dart';
-import 'package:firebase_hosting_api_client/src/utils/typedefs.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -42,19 +42,18 @@ void main() {
       var newVersion = await client.createNewVersion();
 
       // determine the hashes and bytes for the files to upload and put into a json map
-
-      JsonMap uploadJson = {'files': {}};
+      final upload = await UploadData.createFrom(path: 'test/data/coverage');
 
       var requiredHashes = await client.populateFiles(
-        json: uploadJson,
+        json: upload.json,
         versionName: newVersion,
       );
 
-      // await client.uploadFiles(
-      //   requiredHashes: requiredHashes,
-      //   pathForHash: ,
-      //   bytesForHash: ,
-      // );
+      await client.uploadFiles(
+        requiredHashes: requiredHashes,
+        pathForHash: upload.pathForHash,
+        bytesForHash: upload.bytesForHash,
+      );
     });
   });
 }
