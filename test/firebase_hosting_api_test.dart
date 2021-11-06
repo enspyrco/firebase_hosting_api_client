@@ -44,13 +44,22 @@ void main() {
       // determine the hashes and bytes for the files to upload and put into a json map
       final upload = await UploadData.createFrom(path: 'test/data/coverage');
 
-      var requiredHashes = await client.populateFiles(
+      // Add current file paths and hashes to upload data, if not from package.
+      var currentVersion = await client.getCurrentVersion();
+      var currentFiles = await client.listFiles(versionName: currentVersion);
+      for (var file in currentFiles) {
+        print('added file with path: ${file.path}');
+        upload.json[file.path] = file.hash;
+      }
+
+      var result = await client.populateFiles(
         json: upload.json,
         versionName: newVersion,
       );
 
       await client.uploadFiles(
-        requiredHashes: requiredHashes,
+        uploadUrl: result.uploadUrl,
+        requiredHashes: result.requiredHashes,
         pathForHash: upload.pathForHash,
         bytesForHash: upload.bytesForHash,
       );

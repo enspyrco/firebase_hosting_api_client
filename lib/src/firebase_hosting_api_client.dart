@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:firebase_hosting_api_client/src/models/populate_files_result.dart';
 import 'package:firebase_hosting_api_client/src/models/version_file.dart';
 import 'package:firebase_hosting_api_client/src/utils/constants.dart';
-import 'package:firebase_hosting_api_client/src/utils/print_utils.dart';
 import 'package:firebase_hosting_api_client/src/utils/typedefs.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:googleapis_auth/googleapis_auth.dart';
@@ -15,16 +15,18 @@ import 'package:googleapis_auth/googleapis_auth.dart';
 /// You should call [closeClient] when you are done using the api.
 ///
 class FirebaseHostingApiClient {
-  late final String _projectId;
+  final String _projectId;
   late final Uri _createNewVersionUri;
   late final Uri _getCurrentVersionUri;
-  late final String _uploadUrl;
+  final bool _verboseLogging;
 
   final AuthClient _httpClient;
 
-  FirebaseHostingApiClient._(AuthClient httpClient, String projectId)
+  FirebaseHostingApiClient._(
+      AuthClient httpClient, String projectId, bool verboseLogging)
       : _httpClient = httpClient,
-        _projectId = projectId {
+        _projectId = projectId,
+        _verboseLogging = verboseLogging {
     _createNewVersionUri =
         Uri.https(host, '/v1beta1/sites/$_projectId/versions');
     _getCurrentVersionUri =
@@ -32,14 +34,16 @@ class FirebaseHostingApiClient {
   }
 
   static Future<FirebaseHostingApiClient> create(
-      {required String serviceAccountKey, required String projectId}) async {
+      {required String serviceAccountKey,
+      required String projectId,
+      bool verboseLogging = false}) async {
     var credentials =
         ServiceAccountCredentials.fromJson(jsonDecode(serviceAccountKey));
 
     var client = await clientViaServiceAccount(
         credentials, ["https://www.googleapis.com/auth/firebase.hosting"]);
 
-    return FirebaseHostingApiClient._(client, projectId);
+    return FirebaseHostingApiClient._(client, projectId, verboseLogging);
   }
 
   Future<String> getCurrentVersion() async {
@@ -67,7 +71,7 @@ class FirebaseHostingApiClient {
           }
         }));
 
-    printIfVerbose(response.body);
+    _printIfVerbose(response.body);
 
     var versionName = jsonDecode(response.body)['name'];
 
@@ -82,7 +86,7 @@ class FirebaseHostingApiClient {
 
     var listFilesResponse = await _httpClient
         .get(listFilesUri, headers: {'Content-type': 'application/json'});
-    printIfVerbose(listFilesResponse.body);
+    _printIfVerbose(listFilesResponse.body);
 
     var responseJson = jsonDecode(listFilesResponse.body);
 
@@ -95,7 +99,12 @@ class FirebaseHostingApiClient {
     return versionFiles;
   }
 
-  Future<List<String>> populateFiles({
+  /// Specify the list of files to deploy
+  /// https://firebase.google.com/docs/hosting/api-deploy#specify-files
+  ///
+  /// Now that we have a new version identifier, we need to tell Firebase Hosting
+  /// which files we want to eventually deploy in this new version.
+  Future<PopulateFilesResult> populateFiles({
     required JsonMap json,
     required String versionName,
   }) async {
@@ -112,28 +121,29 @@ class FirebaseHostingApiClient {
     print(populateResponse.statusCode);
     print(populateResponse.body);
 
-    printIfVerbose(populateResponse.body);
+    _printIfVerbose(populateResponse.body);
 
     var responseJson = jsonDecode(populateResponse.body);
 
-    _uploadUrl = responseJson['uploadUrl'];
+    var uploadUrl = responseJson['uploadUrl'];
 
     var requiredHashes = List<String>.from(
         (responseJson['uploadRequiredHashes'] ?? []) as List<dynamic>);
 
     print('Required hashes: $requiredHashes');
 
-    return requiredHashes;
+    return PopulateFilesResult(uploadUrl, requiredHashes);
   }
 
   Future<void> uploadFiles({
+    required String uploadUrl,
     required List<String> requiredHashes,
     required Map<String, Uint8List> bytesForHash,
     required Map<String, String> pathForHash,
   }) async {
     int i = 1, total = requiredHashes.length;
     for (var hash in requiredHashes) {
-      await _httpClient.post(Uri.parse('$_uploadUrl/$hash'),
+      await _httpClient.post(Uri.parse('$uploadUrl/$hash'),
           headers: {'Content-Type': 'application/octet-stream'},
           body: bytesForHash[hash]);
 
@@ -150,7 +160,7 @@ class FirebaseHostingApiClient {
         headers: {'Content-type': 'application/json'},
         body: jsonEncode({'status': 'FINALIZED'}));
     print('\nFINALIZED');
-    printIfVerbose(statusResponse.body);
+    _printIfVerbose(statusResponse.body);
   }
 
   Future<void> release({required String versionName}) async {
@@ -159,8 +169,12 @@ class FirebaseHostingApiClient {
     var releaseResponse = await _httpClient.post(releaseUri);
 
     print('\nRELEASED');
-    printIfVerbose(releaseResponse.body);
+    _printIfVerbose(releaseResponse.body);
   }
 
   void close() => _httpClient.close();
+
+  void _printIfVerbose(Object object) {
+    if (_verboseLogging) print(object);
+  }
 }
