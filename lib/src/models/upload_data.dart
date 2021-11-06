@@ -50,7 +50,7 @@ class UploadData {
     for (var entity in entities) {
       if (entity is File) {
         numFiles++;
-        var bytes = entity.readAsBytesSync();
+        var bytes = gzip.encode(entity.readAsBytesSync()) as Uint8List;
         var digest = sha256.convert(bytes);
 
         print(
@@ -58,10 +58,9 @@ class UploadData {
 
         var adjustedPath =
             entity.path.startsWith('/') ? entity.path : '/${entity.path}';
-        adjustedPath = adjustedPath.replaceFirst('.gz', '');
         hashForPath[adjustedPath] = '$digest';
-        bytesForHash['$digest'] = bytes; // gzip.encode(bytes) as Uint8List;
-        pathForHash['$digest'] = entity.path;
+        bytesForHash['$digest'] = bytes;
+        pathForHash['$digest'] = entity.path + '.gz';
       }
     }
 
