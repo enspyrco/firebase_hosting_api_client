@@ -128,10 +128,7 @@ void main() {
     // Add current file paths and hashes to upload data, if not from package.
     var currentVersion = await client.getCurrentVersion();
     var currentFiles = await client.listFiles(versionName: currentVersion);
-    for (var file in currentFiles) {
-      print('added file with path: ${file.path}');
-      upload2.json[file.path] = file.hash;
-    }
+    upload2.add(currentFiles);
 
     var result2 = await client.populateFiles(
       json: upload2.json,
@@ -147,5 +144,5 @@ void main() {
 
     await client.finalizeStatus(versionName: newVersion2);
     await client.release(versionName: newVersion2);
-  }, skip: 'Not currently working');
+  });
 }

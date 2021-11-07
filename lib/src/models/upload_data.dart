@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:firebase_hosting_api_client/src/models/version_file.dart';
 import 'package:firebase_hosting_api_client/src/utils/typedefs.dart';
 
 /// UploadData
@@ -81,6 +82,14 @@ class UploadData {
   JsonMap get json => _uploadJson;
   Map<String, Uint8List> get bytesForHash => _bytesForHash;
   Map<String, String> get pathForHash => _pathForHash;
+
+  // Allow upload without overwrite by adding current files.
+  void add(List<VersionFile> files) {
+    var filesJson = _uploadJson['files'] as JsonMap;
+    for (var file in files) {
+      filesJson[file.path] = file.hash;
+    }
+  }
 
   /// Static utility functions
   static String truncate(int cutoff, String myString) {
