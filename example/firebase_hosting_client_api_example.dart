@@ -14,10 +14,12 @@ void main() async {
   // determine the hashes and bytes for the files to upload and put into a json map
   JsonMap uploadJson = {'files': {}};
 
-  var requiredHashes = await client.populateFiles(
+  var result = await client.populateFiles(
     json: uploadJson,
     versionName: newVersion,
   );
+
+  print(result.uploadUrl);
 
   // await client.uploadFiles(
   //   requiredHashes: requiredHashes,
