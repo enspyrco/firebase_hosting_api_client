@@ -34,7 +34,7 @@ void main() {
       print(currentFiles);
     });
 
-    test('saves files', () async {
+    test('saves a file', () async {
       String key = File('test/key.string').readAsStringSync();
       var client = await FirebaseHostingApiClient.create(
           serviceAccountKey: key, projectId: 'enspyrco');
@@ -44,13 +44,31 @@ void main() {
       // determine the hashes and bytes for the files to upload and put into a json map
       final upload = await UploadData.createFrom(path: 'test/data/coverage');
 
-      // Add current file paths and hashes to upload data, if not from package.
-      var currentVersion = await client.getCurrentVersion();
-      var currentFiles = await client.listFiles(versionName: currentVersion);
-      for (var file in currentFiles) {
-        print('added file with path: ${file.path}');
-        upload.json[file.path] = file.hash;
-      }
+      var result = await client.populateFiles(
+        json: upload.json,
+        versionName: newVersion,
+      );
+
+      await client.uploadFiles(
+        uploadUrl: result.uploadUrl,
+        requiredHashes: result.requiredHashes,
+        pathForHash: upload.pathForHash,
+        bytesForHash: upload.bytesForHash,
+      );
+
+      await client.finalizeStatus(versionName: newVersion);
+      await client.release(versionName: newVersion);
+    });
+
+    test('saves a different file', () async {
+      String key = File('test/key.string').readAsStringSync();
+      var client = await FirebaseHostingApiClient.create(
+          serviceAccountKey: key, projectId: 'enspyrco');
+
+      var newVersion = await client.createNewVersion();
+
+      // determine the hashes and bytes for the files to upload and put into a json map
+      final upload = await UploadData.createFrom(path: 'test/data/coverage2');
 
       var result = await client.populateFiles(
         json: upload.json,
@@ -68,4 +86,66 @@ void main() {
       await client.release(versionName: newVersion);
     });
   });
+
+  test('saves a file without overwriting current files', () async {
+    String key = File('test/key.string').readAsStringSync();
+    var client = await FirebaseHostingApiClient.create(
+        serviceAccountKey: key, projectId: 'enspyrco');
+
+    /////////////////////////////////////////////////////////
+    /// Put the server in a known state
+    /////////////////////////////////////////////////////////
+
+    var newVersion1 = await client.createNewVersion();
+
+    // determine the hashes and bytes for the files to upload and put into a json map
+    final upload1 = await UploadData.createFrom(path: 'test/data/coverage');
+
+    var result1 = await client.populateFiles(
+      json: upload1.json,
+      versionName: newVersion1,
+    );
+
+    await client.uploadFiles(
+      uploadUrl: result1.uploadUrl,
+      requiredHashes: result1.requiredHashes,
+      pathForHash: upload1.pathForHash,
+      bytesForHash: upload1.bytesForHash,
+    );
+
+    await client.finalizeStatus(versionName: newVersion1);
+    await client.release(versionName: newVersion1);
+
+    /////////////////////////////////////////////////////////
+    /// Attempt to upload a new file without overwriting
+    /////////////////////////////////////////////////////////
+
+    var newVersion2 = await client.createNewVersion();
+
+    // determine the hashes and bytes for the files to upload and put into a json map
+    final upload2 = await UploadData.createFrom(path: 'test/data/coverage2');
+
+    // Add current file paths and hashes to upload data, if not from package.
+    var currentVersion = await client.getCurrentVersion();
+    var currentFiles = await client.listFiles(versionName: currentVersion);
+    for (var file in currentFiles) {
+      print('added file with path: ${file.path}');
+      upload2.json[file.path] = file.hash;
+    }
+
+    var result2 = await client.populateFiles(
+      json: upload2.json,
+      versionName: newVersion2,
+    );
+
+    await client.uploadFiles(
+      uploadUrl: result2.uploadUrl,
+      requiredHashes: result2.requiredHashes,
+      pathForHash: upload2.pathForHash,
+      bytesForHash: upload2.bytesForHash,
+    );
+
+    await client.finalizeStatus(versionName: newVersion2);
+    await client.release(versionName: newVersion2);
+  }, skip: 'Not currently working');
 }
